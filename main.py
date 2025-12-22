@@ -16,18 +16,16 @@ def prepare_category():
     conn.close()
 
 
-def run_test():
-    print("--- Start Testu 2 ---")
-    prepare_category()
     moje_kniha = Book(
         Title="Duna",
-        PublicationYear=1965,
+        PublicationYear=1965,       
         ISBN="978-0441172719",
         PurchasePrice=499.0,
         IsDamaged=False,
         CategoryID=1
     )
-    print("ukládám novou knihu...")
+    
+    print("Ukládám novou knihu...")
     moje_kniha.save()
     print(f"Kniha uložena, nové ID je: {moje_kniha.BookID}")
 

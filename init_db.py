@@ -1,50 +1,48 @@
 import pyodbc
-import configparser
 import os
+import sys
+import re
 
-def get_db_connection():
-    config = configparser.ConfigParser()
-    config.read('config/db_config.ini')
-    
-    db_props = config['mssql']
-
-
-    conn_str = (
-        f"DRIVER={{{db_props['driver']}}};"
-        f"SERVER={db_props['server']},{db_props['port']};"
-        f"DATABASE={db_props['database']};"
-        f"UID={db_props['user']};"
-        f"PWD={db_props['password']};"
-        "TrustServerCertificate=yes;"
-    )
-    
-    return pyodbc.connect(conn_str)
+# Přidáme aktuální složku do cesty
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from src.database import Database
 
 def init_database():
-    print("connection to db....")
+    print("Connecting to database...")
     try:
-        conn = get_db_connection
+        conn = Database.get_connection()
         conn.autocommit = True
         cursor = conn.cursor()
-
-        print("Reading SQL schema")
-        with open('sql/schema.sql', 'r', encoding= 'utf-8') as f:
-            sql_script = f.read()
+        print("Connection successful!")
         
-        commands = sql_script.split('GO\n')
-        print("Executing SQL commands...")
-        for command in commands:
-            if command.strip():
+        print("Reading SQL schema...")
+        schema_path = os.path.join('sql', 'schema.sql')
+        
+        with open(schema_path, 'r', encoding='utf-8') as f:
+            sql_script = f.read()
+            
+   
+        commands = re.split(r'\bGO\b', sql_script, flags=re.IGNORECASE)
+        
+        print(f"Found {len(commands)} blocks to execute.")
+        
+        for i, command in enumerate(commands):
+            command = command.strip()
+            if command:
                 try:
+                    print(f"Executing block {i+1}...")
                     cursor.execute(command)
                 except pyodbc.Error as e:
-                    print(f"Error executing command: {e}")
-
-
-        print("Database initialized successfully.")
+                    if "There is already an object" in str(e):
+                        print(f" -> Object already exists (skipping).")
+                    else:
+                        print(f" Error executing block {i+1}: {e}")
+                    
+        print("\nDatabase initialized successfully! Tabulky jsou vytvořeny.")
         conn.close()
-    except pyodbc.Error as e:
-        print(f"Database connection error: {e}")
+        
+    except Exception as e:
+        print(f" Critical Error: {e}")
 
 if __name__ == "__main__":
     init_database()
